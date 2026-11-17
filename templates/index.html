@@ -347,7 +347,7 @@
                             <div class="px-2 py-1 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Switch Active Role (RBAC)</div>
                             <button onclick="setSessionRole('Admin')" class="w-full text-left p-2 rounded-lg hover:bg-slate-50 font-semibold text-slate-800 flex items-center justify-between gap-2 cursor-pointer">
                                 <span class="whitespace-nowrap">👑 Admin</span>
-                                <span class="text-[10px] text-emerald-600 font-bold whitespace-nowrap">Full Access & Archives</span>
+                                <span class="text-[10px] text-purple-600 font-bold whitespace-nowrap">Archives & Accounts (Read-Only A/R)</span>
                             </button>
 
                             <!-- Accounting Staff Row with Left Hover Flyout -->
@@ -356,7 +356,7 @@
                                     <span class="whitespace-nowrap">📋 Accounting Staff</span>
                                     <span class="flex items-center space-x-1.5 shrink-0 whitespace-nowrap">
                                         <span id="count-role-staff" class="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-extrabold">0</span>
-                                        <span class="text-[10px] text-blue-600 font-bold">Monitor & Archive</span>
+                                        <span class="text-[10px] text-blue-600 font-bold">Accounting Operations</span>
                                     </span>
                                 </button>
                                 <div id="flyout-role-staff" class="role-hover-flyout hidden group-hover/staff:block absolute right-full top-0 pr-1.5 z-50 w-80">
@@ -580,7 +580,7 @@
                 </div>
 
                 <!-- ================= 3 KPI SUMMARY CARDS ================= -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                <div id="ops-kpi-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
                     
                     <!-- Card 1: Total Outstanding -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
@@ -614,8 +614,8 @@
                         </div>
                     </div>
 
-                    <!-- Card 3: Collected This Month (Green Growth) -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                    <!-- Card 3: Collected This Month (Green Growth - Staff & Admin Only) -->
+                    <div id="kpi-card-collected" class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Collected This Month</span>
                             <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -636,6 +636,18 @@
                 <!-- ================= ACCOUNTS RECEIVABLE VIEW (DEFAULT) ================= -->
                 <div id="view-ar-container" class="space-y-4">
                     
+                    <!-- Admin Read-Only Mode Banner -->
+                    <div id="admin-readonly-banner-ar" class="hidden p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="text-base shrink-0">🛡️</span>
+                            <span><strong>Admin Read-Only Access:</strong> Receivables & daily accounting operations are handled by Accounting Staff. As Admin, you have administrative access to <strong>Archives</strong> and <strong>Account Management</strong>.</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <button type="button" onclick="showArchivesPage()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition cursor-pointer">Archives &rarr;</button>
+                            <button type="button" onclick="showAccountManagement()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition cursor-pointer">Accounts &rarr;</button>
+                        </div>
+                    </div>
+
                     <!-- Search, Filter & Action Bar -->
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
                         
@@ -656,6 +668,8 @@
                                     <option value="All">Status: All</option>
                                     <option value="Pending">Status: Pending</option>
                                     <option value="Confirmed">Status: Confirmed</option>
+                                    <option value="Confirm with Condition" class="user-only-opt">Status: Confirm with Condition</option>
+                                    <option value="Conditioned" class="staff-only-opt">Status: Conditioned</option>
                                     <option value="Paid" class="staff-only-opt">Status: Paid</option>
                                     <option value="Sent" class="staff-only-opt">Status: Sent</option>
                                     <option value="Draft" class="staff-only-opt">Status: Draft</option>
@@ -686,7 +700,7 @@
                         </div>
 
                         <!-- + New Invoice button (Table row) -->
-                        <button onclick="openNewInvoiceModal()" class="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm shadow-blue-500/20 transition whitespace-nowrap">
+                        <button id="btn-new-invoice" onclick="openNewInvoiceModal()" class="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm shadow-blue-500/20 transition whitespace-nowrap">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                             </svg>
@@ -736,6 +750,18 @@
 
                 <!-- ================= ACCOUNTS PAYABLE VIEW ================= -->
                 <div id="view-ap-container" class="hidden space-y-4">
+
+                    <!-- Admin Read-Only Mode Banner for AP -->
+                    <div id="admin-readonly-banner-ap" class="hidden p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="text-base shrink-0">🛡️</span>
+                            <span><strong>Admin Read-Only Access:</strong> Vendor bill approvals and settlements are handled by Accounting Staff. Archived payables are managed in <strong>Archives</strong>.</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <button type="button" onclick="showArchivesPage()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition cursor-pointer">Archives &rarr;</button>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                         <div>
                             <h3 class="text-base font-bold text-slate-900">Vendor Bills & Accounts Payable</h3>
@@ -771,7 +797,7 @@
                                     </svg>
                                 </span>
                             </div>
-                            <button onclick="openNewBillModal()" class="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-blue-500/20 transition cursor-pointer whitespace-nowrap">
+                            <button id="btn-new-bill" onclick="openNewBillModal()" class="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-blue-500/20 transition cursor-pointer whitespace-nowrap">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                                 </svg>
@@ -1054,6 +1080,7 @@
 
             <form id="form-record-payment" onsubmit="handleConfirmPayment(event)" class="p-6 space-y-4 text-xs">
                 <input type="hidden" id="pay-invoice-id">
+                <input type="hidden" id="pay-modal-mode" value="record">
 
                 <div class="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between">
                     <div>
@@ -1084,7 +1111,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div id="pay-notes-wrap">
                     <label class="block text-slate-700 font-semibold mb-1">Ledger Notes</label>
                     <input type="text" id="pay-notes-input" placeholder="Settlement against verified bank feed" class="w-full p-2.5 border border-slate-300 rounded-lg">
                 </div>
@@ -1684,24 +1711,82 @@
                     return;
                 }
 
-                listEl.innerHTML = items.map(n => `
-                    <div class="p-3.5 hover:bg-slate-50 transition flex items-start space-x-3 cursor-pointer ${n.is_read ? 'opacity-75' : 'bg-blue-50/40'}" onclick="handleNotificationClick('${n.record_kind || ''}')">
-                        <div class="w-7 h-7 rounded-lg ${n.notif_type && n.notif_type.includes('CONFIRMED') ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            ${n.notif_type && n.notif_type.includes('CONFIRMED') ? '✓' : '🔔'}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center justify-between gap-2">
-                                <p class="font-bold text-slate-800 text-xs truncate">${n.title}</p>
-                                ${!n.is_read ? '<span class="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>' : ''}
+                listEl.innerHTML = items.map(n => {
+                    let actionHtml = '';
+                    if (n.record_id && n.invoice_status) {
+                        const safeRef = escapeHtml(n.ref_number || '');
+                        const safeClient = escapeHtml(n.invoice_client || 'Client');
+                        const amt = Number(n.invoice_balance || n.invoice_amount || 0);
+
+                        if (currentUserRole === 'Admin') {
+                            actionHtml = `
+                                <div class="mt-2 flex items-center space-x-2">
+                                    <button type="button" onclick="event.stopPropagation(); toggleNotificationDropdown(); openInvoiceDetails(${Number(n.record_id)})" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-[11px] transition cursor-pointer">View Details</button>
+                                </div>
+                            `;
+                        } else if (currentUserRole === 'Accounting Staff') {
+                            if (n.invoice_status === 'Pending') {
+                                actionHtml = `
+                                    <div class="mt-2 flex items-center space-x-2">
+                                        <button type="button" onclick="event.stopPropagation(); confirmInvoiceFromNotification(${Number(n.record_id)}, '${safeRef}', '${safeClient}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shadow-xs transition cursor-pointer">✓ Confirm Paid</button>
+                                        <button type="button" onclick="event.stopPropagation(); openPartialPayFromNotification(${Number(n.record_id)}, '${safeRef}', '${safeClient}', ${amt})" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-[11px] transition cursor-pointer">⏱ Partial Payment</button>
+                                    </div>
+                                `;
+                            } else if (n.invoice_status === 'Confirm with Condition' || n.invoice_status === 'Conditioned') {
+                                actionHtml = `
+                                    <div class="mt-2 flex items-center space-x-2">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-300">📋 Conditioned</span>
+                                        <button type="button" onclick="event.stopPropagation(); openRecordPayFromNotification(${Number(n.record_id)}, '${safeRef}', '${safeClient}', ${amt})" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition cursor-pointer">Record Payment</button>
+                                    </div>
+                                `;
+                            } else if (n.invoice_status === 'Confirmed' || n.invoice_status === 'Paid') {
+                                actionHtml = `
+                                    <div class="mt-2 flex items-center space-x-2">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">✓ Confirmed</span>
+                                        <button type="button" onclick="event.stopPropagation(); toggleNotificationDropdown(); openInvoiceDetails(${Number(n.record_id)})" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-[11px] transition cursor-pointer">View Details</button>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }
+                    return `
+                        <div class="p-3.5 hover:bg-slate-50 transition flex items-start space-x-3 cursor-pointer ${n.is_read ? 'opacity-75' : 'bg-blue-50/40'}" onclick="handleNotificationClick('${n.record_kind || ''}')">
+                            <div class="w-7 h-7 rounded-lg ${n.notif_type && n.notif_type.includes('CONFIRMED') ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                                ${n.notif_type && n.notif_type.includes('CONFIRMED') ? '✓' : '🔔'}
                             </div>
-                            <p class="text-slate-600 text-[11px] mt-0.5 leading-snug">${n.message}</p>
-                            <span class="text-[10px] text-slate-400 mt-1 block">${n.created_by_name || ''} · ${n.created_at}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="font-bold text-slate-800 text-xs truncate">${n.title}</p>
+                                    ${!n.is_read ? '<span class="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>' : ''}
+                                </div>
+                                <p class="text-slate-600 text-[11px] mt-0.5 leading-snug">${n.message}</p>
+                                ${actionHtml}
+                                <span class="text-[10px] text-slate-400 mt-1 block">${n.created_by_name || ''} · ${n.created_at}</span>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (e) {
                 console.error("Failed to load notifications", e);
             }
+        }
+
+        function confirmInvoiceFromNotification(invId, refNum, clientName) {
+            toggleNotificationDropdown();
+            switchTab('ar');
+            confirmInvoicePayment(invId, refNum, clientName);
+        }
+
+        function openPartialPayFromNotification(invId, refNum, clientName, amount) {
+            toggleNotificationDropdown();
+            switchTab('ar');
+            openRecordPaymentModal(invId, refNum, clientName, amount, 'partial');
+        }
+
+        function openRecordPayFromNotification(invId, refNum, clientName, amount) {
+            toggleNotificationDropdown();
+            switchTab('ar');
+            openRecordPaymentModal(invId, refNum, clientName, amount, 'record');
         }
 
         // Unified Sidebar Highlighting Helper (handles Admin/Staff AND User sidebar)
@@ -1903,10 +1988,22 @@
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50/80 transition group";
 
-                    // Status pill logic: Users strictly see Pending vs Confirmed!
+                    // Status pill logic:
+                    // - User sees: Pending, Confirm with Condition (when Partial Pay chosen), or Confirmed
+                    // - Accounting Staff / Admin sees: Pending (User), Conditioned (with Record Payment action), or Confirmed (with View Details action)
+                    const accNote = (inv.accounting_notes || '').trim();
                     let statusBadge = '';
                     if (currentUserRole === 'User') {
-                        if (inv.status === 'Confirmed' || inv.status === 'Paid') {
+                        if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned') {
+                            statusBadge = `
+                                <div class="inline-flex flex-col items-center space-y-1">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300">
+                                        <span class="mr-1">📋</span>Confirm with Condition
+                                    </span>
+                                    ${accNote ? `<span onclick="openInvoiceDetails(${inv.id})" title="${escapeHtml(accNote)}" class="max-w-[200px] truncate text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 cursor-pointer hover:bg-teal-100">💬 ${escapeHtml(accNote)}</span>` : ''}
+                                </div>
+                            `;
+                        } else if (inv.status === 'Confirmed' || inv.status === 'Paid') {
                             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="mr-1">✓</span>Confirmed</span>`;
                         } else {
                             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300"><span class="mr-1">⏳</span>Pending</span>`;
@@ -1915,6 +2012,13 @@
                         statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-300"><span class="mr-1">🗄️</span>Archived</span>`;
                     } else if (inv.status === 'Confirmed') {
                         statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="mr-1">✓</span>Confirmed</span>`;
+                    } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned') {
+                        statusBadge = `
+                            <div class="inline-flex flex-col items-center space-y-1">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300"><span class="mr-1">📋</span>Conditioned</span>
+                                ${accNote ? `<span onclick="openInvoiceDetails(${inv.id})" title="${escapeHtml(accNote)}" class="max-w-[180px] truncate text-[9px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 cursor-pointer">💬 ${escapeHtml(accNote)}</span>` : ''}
+                            </div>
+                        `;
                     } else if (inv.status === 'Paid') {
                         statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#0B2E1E] text-[#10B981] border border-[#10B981]/30"><span class="w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5"></span>Paid</span>`;
                     } else if (inv.status === 'Pending') {
@@ -1951,25 +2055,29 @@
                                 </svg>
                             </button>` : '';
                         actionControls = `<div class="inline-flex items-center justify-center space-x-1">${restoreBtn}${deleteBtn}</div>`;
-                    } else if (userPermissions && !userPermissions.can_edit && !userPermissions.can_archive) {
+                    } else if (currentUserRole === 'Admin' || (userPermissions && !userPermissions.can_edit && !userPermissions.can_archive)) {
                         actionControls = `
-                            <div class="inline-flex items-center justify-center space-x-1">
+                            <div class="inline-flex items-center justify-center space-x-1.5">
+                                ${accNote ? `<button onclick="openInvoiceDetails(${inv.id})" class="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg font-bold text-xs transition cursor-pointer">💬 View Ledger Notes</button>` : ''}
                                 <button onclick="openInvoiceDetails(${inv.id})" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer">View Details</button>
                             </div>
                         `;
                     } else {
                         let actionButton = '';
+                        const recordAmount = inv.balance_due > 0 ? inv.balance_due : inv.total_amount;
                         if (inv.status === 'Paid' || inv.status === 'Confirmed') {
                             actionButton = `<button onclick="openInvoiceDetails(${inv.id})" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer">View Details</button>`;
+                        } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned' || inv.status === 'Sent') {
+                            actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
                         } else if (inv.status === 'Pending' || inv.created_by_role === 'User') {
                             actionButton = `
                                 <button onclick="confirmInvoicePayment(${inv.id}, '${inv.invoice_number}', '${inv.client_name}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition cursor-pointer">Confirm Paid</button>
-                                <button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${inv.balance_due})" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-semibold text-xs transition cursor-pointer">Partial Pay</button>
+                                <button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'partial')" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-semibold text-xs transition cursor-pointer">Partial Pay</button>
                             `;
                         } else if (inv.status === 'Overdue') {
-                            actionButton = `<button onclick="openReminderModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', '${inv.due_date}', ${inv.balance_due})" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-red-500/20 transition cursor-pointer">Send Reminder</button>`;
+                            actionButton = `<button onclick="openReminderModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', '${inv.due_date}', ${recordAmount})" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-red-500/20 transition cursor-pointer">Send Reminder</button>`;
                         } else {
-                            actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${inv.balance_due})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
+                            actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
                         }
 
                         const editBtn = (userPermissions && userPermissions.can_edit) ? `
@@ -2012,8 +2120,8 @@
         }
 
         async function confirmInvoicePayment(id, num, client) {
-            if (userPermissions && userPermissions.can_record_payment === false) {
-                showPermissionAlert("Confirm Invoice Payment", "Accounting Staff or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_record_payment === false)) {
+                showPermissionAlert("Confirm Invoice Payment", "Accounting Staff");
                 return;
             }
             if (!confirm(`Confirm payment for ${num} (${client})? User status will immediately change from Pending to Confirmed.`)) return;
@@ -2021,7 +2129,7 @@
                 const res = await fetch(`/api/invoices/${id}/confirm`, { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 403) {
-                    showPermissionAlert("Confirm Invoice Payment", "Accounting Staff or Admin");
+                    showPermissionAlert("Confirm Invoice Payment", "Accounting Staff");
                     return;
                 }
                 if (data.success) {
@@ -2137,18 +2245,18 @@
                             const payLabel = (b.status === 'Pending' || b.created_by_role === 'User') ? 'Pay & Confirm' : 'Pay Bill';
                             payBtn = (userPermissions && userPermissions.can_settle_bills)
                                 ? `<button onclick="payVendorBill(${b.id}, '${b.bill_number}', '${b.vendor_name}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition cursor-pointer">${payLabel}</button>`
-                                : `<span class="text-[11px] text-slate-400 font-medium px-2">Pending Staff Review</span>`;
+                                : `<span class="text-[11px] text-slate-400 font-medium px-2">${currentUserRole === 'Admin' ? 'Staff Only (Read-Only)' : 'Pending Staff Review'}</span>`;
                         }
                     }
 
-                    const archiveBtn = (userPermissions && userPermissions.can_archive) ? `
+                    const archiveBtn = (currentUserRole !== 'Admin' && userPermissions && userPermissions.can_archive) ? `
                         <button onclick="archiveVendorBill(${b.id}, '${b.bill_number}')" title="Archive Bill" class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
                             </svg>
                         </button>` : '';
 
-                    const deleteBtn = (userPermissions && userPermissions.can_delete) ? `
+                    const deleteBtn = (b.is_archived && userPermissions && userPermissions.can_delete) ? `
                         <button onclick="deleteVendorBill(${b.id}, '${b.bill_number}')" title="Delete Bill (Admin Only)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -2175,8 +2283,8 @@
         }
 
         function openNewBillModal() {
-            if (userPermissions && userPermissions.can_create === false) {
-                showPermissionAlert("Record Vendor Bill", "User, Accounting Staff, or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_create === false)) {
+                showPermissionAlert("Record Vendor Bill", "Accounting Staff or User (Admin has Read-Only access)");
                 return;
             }
             openModal('modal-new-bill');
@@ -2221,15 +2329,15 @@
         }
 
         async function archiveVendorBill(id, num) {
-            if (userPermissions && userPermissions.can_archive === false) {
-                showPermissionAlert("Archive Vendor Bill", "Accounting Staff or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_archive === false)) {
+                showPermissionAlert("Archive Vendor Bill", "Accounting Staff");
                 return;
             }
             try {
                 const res = await fetch(`/api/bills/${id}/archive`, { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 403) {
-                    showPermissionAlert("Archive Vendor Bill", "Accounting Staff or Admin");
+                    showPermissionAlert("Archive Vendor Bill", "Accounting Staff");
                     return;
                 }
                 if (data.success) {
@@ -2263,8 +2371,8 @@
         }
 
         async function payVendorBill(id, num, vendor) {
-            if (userPermissions && userPermissions.can_settle_bills === false) {
-                showPermissionAlert("Pay Vendor Bill", "Accounting Staff or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_settle_bills === false)) {
+                showPermissionAlert("Pay Vendor Bill", "Accounting Staff");
                 return;
             }
             if (!confirm(`Confirm disbursement for ${num} (${vendor})?`)) return;
@@ -2272,7 +2380,7 @@
                 const res = await fetch(`/api/bills/${id}/pay`, { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 403) {
-                    showPermissionAlert("Pay Vendor Bill", "Accounting Staff or Admin");
+                    showPermissionAlert("Pay Vendor Bill", "Accounting Staff");
                     return;
                 }
                 if (data.success) {
@@ -2335,8 +2443,8 @@
         }
 
         function openNewInvoiceModal() {
-            if (userPermissions && userPermissions.can_create === false) {
-                showPermissionAlert("Create New Invoice", "User, Accounting Staff, or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_create === false)) {
+                showPermissionAlert("Create New Invoice", "Accounting Staff or User (Admin has Read-Only access)");
                 return;
             }
             openModal('modal-new-invoice');
@@ -2426,17 +2534,23 @@
         }
 
         // Record Payment Modal
-        function openRecordPaymentModal(id, num, client, balance) {
-            if (userPermissions && userPermissions.can_record_payment === false) {
-                showPermissionAlert("Record Payment", "Accounting Staff or Admin");
+        function openRecordPaymentModal(id, num, client, balance, mode = 'record') {
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_record_payment === false)) {
+                showPermissionAlert("Record Payment", "Accounting Staff");
                 return;
             }
             document.getElementById('pay-invoice-id').value = id;
+            const modeEl = document.getElementById('pay-modal-mode');
+            if (modeEl) modeEl.value = mode || 'record';
             document.getElementById('pay-modal-subtitle').innerText = `Reconcile receivable for ${num}`;
             document.getElementById('pay-invoice-client').innerText = client;
             document.getElementById('pay-balance-display').innerText = formatCurrency(balance);
             document.getElementById('pay-amount-input').value = balance;
             document.getElementById('pay-amount-input').max = balance;
+            const payNotesEl = document.getElementById('pay-notes-input');
+            if (payNotesEl) payNotesEl.value = '';
+            const payNotesWrap = document.getElementById('pay-notes-wrap');
+            if (payNotesWrap) payNotesWrap.classList.toggle('hidden', mode !== 'partial');
             openModal('modal-record-payment');
         }
 
@@ -2446,7 +2560,9 @@
             const amount = parseFloat(document.getElementById('pay-amount-input').value);
             const method = document.getElementById('pay-method-select').value;
             const ref = document.getElementById('pay-ref-input').value;
-            const notes = document.getElementById('pay-notes-input').value;
+            const modeEl = document.getElementById('pay-modal-mode');
+            const paymentMode = modeEl ? modeEl.value : 'record';
+            const notes = paymentMode === 'partial' ? document.getElementById('pay-notes-input').value : '';
 
             try {
                 const res = await fetch(`/api/invoices/${invId}/payment`, {
@@ -2456,7 +2572,8 @@
                         amount: amount,
                         payment_method: method,
                         reference_no: ref,
-                        notes: notes
+                        notes: notes,
+                        payment_mode: paymentMode
                     })
                 });
                 const data = await res.json();
@@ -2502,17 +2619,32 @@
                             <h4 class="font-bold text-slate-800 mb-2">Verified Settlement Transactions</h4>
                             <div class="space-y-1.5">
                                 ${payments.map(p => `
-                                    <div class="flex items-center justify-between p-2 bg-emerald-50/60 rounded border border-emerald-100 text-emerald-900">
-                                        <div>
-                                            <span class="font-bold">${formatCurrency(p.amount)}</span> via <span class="font-semibold">${p.payment_method}</span> (${p.reference_no})
+                                    <div class="p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-100 text-emerald-900">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <span class="font-bold">${formatCurrency(p.amount)}</span> via <span class="font-semibold">${p.payment_method}</span> (${p.reference_no})
+                                            </div>
+                                            <div class="text-[10px] text-emerald-700">${p.payment_date}</div>
                                         </div>
-                                        <div class="text-[10px] text-emerald-700">${p.payment_date}</div>
+                                        ${p.notes ? `<div class="mt-1 text-[11px] text-teal-800 font-medium">💬 Ledger Notes: <span class="font-semibold">${escapeHtml(p.notes)}</span></div>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     `;
                 }
+
+                const accountingLedgerNote = (inv.accounting_notes || '').trim();
+                const ledgerConditionHtml = accountingLedgerNote ? `
+                    <div class="p-3.5 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900">
+                        <div class="font-extrabold text-teal-800 uppercase tracking-wider text-[10px] mb-1">📋 Accounting Staff Ledger Notes (Condition)</div>
+                        <div class="font-semibold text-slate-800">${escapeHtml(accountingLedgerNote)}</div>
+                    </div>
+                ` : '';
+
+                const displayDetailStatus = (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned')
+                    ? (currentUserRole === 'User' ? 'Confirm with Condition' : 'Conditioned')
+                    : inv.status;
 
                 document.getElementById('detail-modal-body').innerHTML = `
                     <div class="flex items-start justify-between border-b pb-4">
@@ -2535,10 +2667,12 @@
                         <div class="text-right">
                             <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Status:</span>
                             <div class="mt-1">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : (inv.status === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800')}">${inv.status}</span>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${displayDetailStatus === 'Confirm with Condition' ? 'bg-teal-100 text-teal-800' : (displayDetailStatus === 'Paid' || displayDetailStatus === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' : (displayDetailStatus === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-indigo-100 text-indigo-800'))}">${displayDetailStatus}</span>
                             </div>
                         </div>
                     </div>
+
+                    ${ledgerConditionHtml}
 
                     <table class="w-full text-left text-xs border-t border-b border-slate-200 mt-2">
                         <thead>
@@ -3193,14 +3327,14 @@
         let currentUserName = "Alex Rivera";
         let currentUserInitials = "AR";
         let userPermissions = {
-            can_create: true,
-            can_edit: true,
-            can_archive: true,
+            can_create: false,
+            can_edit: false,
+            can_archive: false,
             can_view_archives: true,
             can_restore: true,
             can_delete: true,
-            can_record_payment: true,
-            can_settle_bills: true,
+            can_record_payment: false,
+            can_settle_bills: false,
             can_monitor_users: true,
             can_manage_accounts: true
         };
@@ -3316,9 +3450,16 @@
 
         function applyRoleUI() {
             const isUser = currentUserRole === 'User';
-            const isAdmin = Boolean(userPermissions && userPermissions.can_manage_accounts);
+            const isAdmin = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_manage_accounts);
             const canViewArch = Boolean(userPermissions && userPermissions.can_view_archives);
             const canMonitor = Boolean(userPermissions && userPermissions.can_monitor_users);
+            const canCreate = Boolean(userPermissions && userPermissions.can_create);
+
+            // Hide "+ New Invoice" and "+ New Bill" buttons for Admin (Admin has Read-Only accounting)
+            const btnNewInv = document.getElementById('btn-new-invoice');
+            const btnNewBill = document.getElementById('btn-new-bill');
+            if (btnNewInv) btnNewInv.classList.toggle('hidden', isAdmin || !canCreate);
+            if (btnNewBill) btnNewBill.classList.toggle('hidden', isAdmin || !canCreate);
 
             // Swap Admin/Staff Sidebar vs stripped-down User Sidebar (Home, General Ledger, Invoice, Bills)
             const staffNav = document.getElementById('sidebar-admin-staff-nav');
@@ -3326,11 +3467,24 @@
             if (staffNav) staffNav.classList.toggle('hidden', isUser);
             if (userNav) userNav.classList.toggle('hidden', !isUser);
 
-            // Hide Audit Trail notification footer & FIFO button in User view
+            // Hide Audit Trail notification footer, FIFO button & Collected This Month KPI card in User/Admin views
             const notifAuditFooter = document.getElementById('notif-footer-audit');
             const fifoBtn = document.getElementById('btn-fifo-match');
+            const kpiCollectedCard = document.getElementById('kpi-card-collected');
+            const opsKpiGrid = document.getElementById('ops-kpi-grid');
             if (notifAuditFooter) notifAuditFooter.classList.toggle('hidden', isUser);
-            if (fifoBtn) fifoBtn.classList.toggle('hidden', isUser);
+            if (fifoBtn) fifoBtn.classList.toggle('hidden', isUser || isAdmin);
+            if (kpiCollectedCard) kpiCollectedCard.classList.toggle('hidden', isUser);
+            if (opsKpiGrid) {
+                opsKpiGrid.classList.toggle('md:grid-cols-2', isUser);
+                opsKpiGrid.classList.toggle('md:grid-cols-3', !isUser);
+            }
+
+            // Show Read-Only Banners for Admin on Invoicing & A/R and Bills & A/P
+            const adminBannerAr = document.getElementById('admin-readonly-banner-ar');
+            const adminBannerAp = document.getElementById('admin-readonly-banner-ap');
+            if (adminBannerAr) adminBannerAr.classList.toggle('hidden', !isAdmin);
+            if (adminBannerAp) adminBannerAp.classList.toggle('hidden', !isAdmin);
 
             // Labels adapt cleanly for User vs Accounting/Admin
             const opsTitle = document.getElementById('ops-main-title');
@@ -3340,12 +3494,20 @@
             if (tabLabelAr) tabLabelAr.innerText = isUser ? 'Invoice' : 'Accounts Receivable';
             if (tabLabelAp) tabLabelAp.innerText = isUser ? 'Bills' : 'Accounts Payable';
 
-            // User status filter shows only All, Pending, Confirmed
+            // User status filter shows All, Pending, Confirmed, Confirm with Condition; Staff/Admin sees Sent instead of Confirmed
             document.querySelectorAll('.staff-only-opt').forEach(opt => {
                 opt.classList.toggle('hidden', isUser);
                 opt.disabled = isUser;
             });
-            if (isUser && !['All', 'Pending', 'Confirmed'].includes(currentStatusFilter)) {
+            document.querySelectorAll('.user-only-opt').forEach(opt => {
+                opt.classList.toggle('hidden', !isUser);
+                opt.disabled = !isUser;
+            });
+            if (isUser && !['All', 'Pending', 'Confirmed', 'Confirm with Condition'].includes(currentStatusFilter)) {
+                currentStatusFilter = 'All';
+                const statusSel = document.getElementById('status-filter-select');
+                if (statusSel) statusSel.value = 'All';
+            } else if (!isUser && currentStatusFilter === 'Confirm with Condition') {
                 currentStatusFilter = 'All';
                 const statusSel = document.getElementById('status-filter-select');
                 if (statusSel) statusSel.value = 'All';
@@ -3625,16 +3787,19 @@
                 if (invListEl) {
                     const invs = data.recent_invoices || [];
                     invListEl.innerHTML = invs.length > 0 ? invs.map(i => `
-                        <div class="p-3.5 flex items-center justify-between hover:bg-slate-50">
-                            <div>
+                        <div class="p-3.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onclick="openInvoiceDetails(${i.id})">
+                            <div class="min-w-0 pr-3">
                                 <span class="font-bold text-slate-900">${i.invoice_number}</span> · <span class="text-slate-600">${i.client_name}</span>
                                 <div class="text-[10px] text-slate-400 mt-0.5">Due: ${i.due_date}</div>
+                                ${i.accounting_notes ? `<div class="mt-1 inline-flex items-center px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-[10px] font-semibold text-teal-800">💬 Ledger Notes: ${escapeHtml(i.accounting_notes)}</div>` : ''}
                             </div>
-                            <div class="text-right flex items-center space-x-3">
+                            <div class="text-right flex items-center space-x-3 shrink-0">
                                 <span class="font-bold text-slate-900">${formatCurrency(i.total_amount)}</span>
-                                ${i.user_status === 'Confirmed'
-                                    ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">✓ Confirmed</span>`
-                                    : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Pending</span>`}
+                                ${i.user_status === 'Confirm with Condition'
+                                    ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-300">📋 Confirm with Condition</span>`
+                                    : (i.user_status === 'Confirmed'
+                                        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">✓ Confirmed</span>`
+                                        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Pending</span>`)}
                             </div>
                         </div>
                     `).join('') : `<div class="p-6 text-center text-slate-400">No invoices submitted yet. Click + New Invoice to create one.</div>`;
@@ -4080,11 +4245,15 @@
 
         // ==================== COMPLETE CRUD OPERATIONS ====================
         async function archiveInvoice(id, invNumber) {
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_archive === false)) {
+                showPermissionAlert("Archive Invoice", "Accounting Staff");
+                return;
+            }
             try {
                 const res = await fetch(`/api/invoices/${id}/archive`, { method: 'POST' });
                 const data = await res.json();
                 if (res.status === 403) {
-                    showPermissionAlert("Archive Invoice", "Accounting Staff or Admin");
+                    showPermissionAlert("Archive Invoice", "Accounting Staff");
                     return;
                 }
                 if (data.success) {
@@ -4141,8 +4310,8 @@
 
         // ==================== EDIT INVOICE (UPDATE CRUD & REACTIVE CART) ====================
         async function openEditInvoiceModal(id) {
-            if (userPermissions && userPermissions.can_edit === false) {
-                showPermissionAlert("Edit Invoice", "Accounting Staff or Admin");
+            if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_edit === false)) {
+                showPermissionAlert("Edit Invoice", "Accounting Staff");
                 return;
             }
             try {
@@ -4274,7 +4443,7 @@
                 });
                 const data = await res.json();
                 if (res.status === 403) {
-                    showPermissionAlert("Edit Invoice", "Accounting Staff or Admin");
+                    showPermissionAlert("Edit Invoice", "Accounting Staff");
                     return;
                 }
                 if (data.success) {

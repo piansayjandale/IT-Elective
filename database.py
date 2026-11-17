@@ -42,6 +42,7 @@ def init_db():
         archived_by TEXT,
         archived_at TEXT,
         notes TEXT,
+        accounting_notes TEXT,
         created_at TEXT NOT NULL
     )
     """)
@@ -55,7 +56,8 @@ def init_db():
         ('created_by_name', "TEXT DEFAULT 'Alex Rivera'"),
         ('created_by_role', "TEXT DEFAULT 'Admin'"),
         ('archived_by', 'TEXT'),
-        ('archived_at', 'TEXT')
+        ('archived_at', 'TEXT'),
+        ('accounting_notes', 'TEXT')
     ]:
         if col_name not in inv_cols:
             cursor.execute(f"ALTER TABLE invoices ADD COLUMN {col_name} {col_def}")

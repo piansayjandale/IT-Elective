@@ -45,7 +45,7 @@ def log_audit(action, details, user="Alex Rivera (Admin)"):
         (now_str, action, user, details)
     )
 
-SETTLED_STATUSES = ('Paid', 'Confirmed')
+SETTLED_STATUSES = ('Paid', 'Confirmed', 'Confirm with Condition', 'Conditioned')
 
 def is_settled(status):
     return (status or '') in SETTLED_STATUSES
@@ -87,14 +87,14 @@ ROLES = {
     "Admin": {
         "title": "Admin",
         "badge": "👑 Admin",
-        "can_create": True,
-        "can_edit": True,
-        "can_archive": True,
+        "can_create": False,
+        "can_edit": False,
+        "can_archive": False,
         "can_view_archives": True,
         "can_restore": True,
         "can_delete": True,
-        "can_record_payment": True,
-        "can_settle_bills": True,
+        "can_record_payment": False,
+        "can_settle_bills": False,
         "can_view_reports": True,
         "can_monitor_users": True,
         "can_manage_accounts": True,
@@ -536,15 +536,20 @@ def get_invoices():
         if status_filter and status_filter != 'All':
             if get_current_role() == 'User':
                 if status_filter == 'Pending':
-                    query += " AND status NOT IN ('Paid', 'Confirmed')"
+                    query += " AND status NOT IN ('Paid', 'Confirmed', 'Confirm with Condition', 'Conditioned')"
                 elif status_filter == 'Confirmed':
                     query += " AND status IN ('Paid', 'Confirmed')"
+                elif status_filter in ('Confirm with Condition', 'Conditioned'):
+                    query += " AND status IN ('Confirm with Condition', 'Conditioned')"
                 else:
                     query += " AND status = ?"
                     params.append(status_filter)
             else:
-                query += " AND status = ?"
-                params.append(status_filter)
+                if status_filter in ('Conditioned', 'Confirm with Condition'):
+                    query += " AND status IN ('Conditioned', 'Confirm with Condition')"
+                else:
+                    query += " AND status = ?"
+                    params.append(status_filter)
 
     scope_sql, scope_params = apply_role_scope()
     query += scope_sql
@@ -562,7 +567,7 @@ def get_invoices():
         params.append(f"%{search_query}%")
         params.append(f"%{search_query}%")
 
-    query += " ORDER BY id ASC"
+    query += " ORDER BY CASE WHEN status = 'Pending' THEN 0 ELSE 1 END ASC, id DESC"
 
     all_matches = query_db(query, params)
     total_count = len(all_matches)
@@ -595,6 +600,7 @@ def get_invoices():
             'archived_by': row['archived_by'] if 'archived_by' in keys else None,
             'archived_at': row['archived_at'] if 'archived_at' in keys else None,
             'notes': row['notes'],
+            'accounting_notes': row['accounting_notes'] if 'accounting_notes' in keys and row['accounting_notes'] else '',
             'created_at': row['created_at']
         })
 
@@ -641,7 +647,8 @@ def get_invoice_detail(invoice_id):
             'created_by_role': normalize_role(inv['created_by_role'], default='Admin') if 'created_by_role' in keys and inv['created_by_role'] else 'Admin',
             'archived_by': inv['archived_by'] if 'archived_by' in keys else None,
             'archived_at': inv['archived_at'] if 'archived_at' in keys else None,
-            'notes': inv['notes']
+            'notes': inv['notes'],
+            'accounting_notes': inv['accounting_notes'] if 'accounting_notes' in keys and inv['accounting_notes'] else ''
         },
         'items': [{
             'id': item['id'],
@@ -769,7 +776,7 @@ def create_invoice():
 def update_invoice(invoice_id):
     if not check_permission('can_edit'):
         return jsonify({
-            'error': f"Permission Denied: Current role '{get_current_role()}' cannot edit invoices. Requires Accounting Staff or Admin."
+            'error': f"Permission Denied: Current role '{get_current_role()}' cannot edit invoices. Requires Accounting Staff."
         }), 403
 
     inv = query_db("SELECT * FROM invoices WHERE id = ?", (invoice_id,), one=True)
@@ -866,7 +873,7 @@ def update_invoice(invoice_id):
 def archive_invoice(invoice_id):
     if not check_permission('can_archive'):
         return jsonify({
-            'error': f"Permission Denied: Current role '{get_current_role()}' cannot archive invoices. Requires Accounting Staff or Admin."
+            'error': f"Permission Denied: Current role '{get_current_role()}' cannot archive invoices. Requires Accounting Staff."
         }), 403
 
     inv = query_db("SELECT * FROM invoices WHERE id = ?", (invoice_id,), one=True)
@@ -1074,7 +1081,7 @@ def admin_sync():
 def record_payment(invoice_id):
     if not check_permission('can_record_payment'):
         return jsonify({
-            'error': f"Permission Denied: Current role '{get_current_role()}' cannot record payments. Requires Accounting Staff or Admin."
+            'error': f"Permission Denied: Current role '{get_current_role()}' cannot record payments. Requires Accounting Staff."
         }), 403
 
     inv = query_db("SELECT * FROM invoices WHERE id = ?", (invoice_id,), one=True)
@@ -1089,24 +1096,60 @@ def record_payment(invoice_id):
     payment_amount = float(data.get('amount', 0))
     payment_method = data.get('payment_method', 'Wire Transfer')
     reference_no = data.get('reference_no', f"WT-{datetime.now().strftime('%y%m%d%H%M')}")
-    notes = data.get('notes', 'Payment settlement')
+    payment_mode = (data.get('payment_mode') or '').strip().lower()
+    raw_notes = (data.get('notes') or '').strip()
+    has_ledger_note = bool(raw_notes)
+    notes = raw_notes if has_ledger_note else 'Payment settlement'
 
     if payment_amount <= 0:
         return jsonify({'error': 'Payment amount must be greater than 0'}), 400
 
-    new_paid = inv['paid_amount'] + payment_amount
-    new_balance = max(0.0, inv['total_amount'] - new_paid)
+    new_paid = min(float(inv['total_amount']), float(inv['paid_amount']) + payment_amount)
+    new_balance = max(0.0, float(inv['total_amount']) - new_paid)
 
-    if new_balance <= 0.01:
-        new_status = 'Confirmed' if (owner_role == 'User' or inv['status'] == 'Pending') else 'Paid'
+    if payment_mode == 'partial' or (inv['status'] == 'Pending' and has_ledger_note):
+        new_status = 'Confirm with Condition'
+        if new_balance <= 0.01:
+            new_balance = 0.0
+            is_overdue = 0
+        else:
+            is_overdue = inv['is_overdue']
+        saved_accounting_note = raw_notes or (
+            f"Partial payment of ₱{payment_amount:,.2f} recorded (Remaining balance: ₱{new_balance:,.2f})"
+            if new_balance > 0 else f"Conditional confirmation recorded (₱{payment_amount:,.2f})"
+        )
+    elif payment_mode == 'record':
+        new_status = 'Confirmed'
+        new_paid = float(inv['total_amount'])
         new_balance = 0.0
         is_overdue = 0
+        saved_accounting_note = inv['accounting_notes'] if 'accounting_notes' in keys and inv['accounting_notes'] else ''
+    elif has_ledger_note and inv['status'] != 'Confirm with Condition':
+        new_status = 'Confirm with Condition'
+        if new_balance <= 0.01:
+            new_balance = 0.0
+            is_overdue = 0
+        else:
+            is_overdue = inv['is_overdue']
+        saved_accounting_note = raw_notes
+    elif new_balance <= 0.01 or inv['status'] == 'Confirm with Condition':
+        new_status = 'Confirmed' if (owner_role == 'User' or inv['status'] in ('Pending', 'Confirm with Condition')) else 'Paid'
+        new_paid = float(inv['total_amount'])
+        new_balance = 0.0
+        is_overdue = 0
+        saved_accounting_note = raw_notes or (inv['accounting_notes'] if 'accounting_notes' in keys and inv['accounting_notes'] else '')
     elif new_paid > 0:
-        new_status = 'Partial'
+        if owner_role == 'User' or inv['status'] == 'Pending':
+            new_status = 'Confirm with Condition'
+            saved_accounting_note = raw_notes or f"Partial payment of ₱{payment_amount:,.2f} recorded (Remaining balance: ₱{new_balance:,.2f})"
+        else:
+            new_status = 'Partial'
+            saved_accounting_note = inv['accounting_notes'] if 'accounting_notes' in keys and inv['accounting_notes'] else ''
         is_overdue = inv['is_overdue']
     else:
         new_status = inv['status']
         is_overdue = inv['is_overdue']
+        saved_accounting_note = inv['accounting_notes'] if 'accounting_notes' in keys and inv['accounting_notes'] else ''
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -1115,14 +1158,14 @@ def record_payment(invoice_id):
     execute_db("""
     INSERT INTO payments (invoice_id, payment_date, amount, payment_method, reference_no, notes, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (invoice_id, today_str, payment_amount, payment_method, reference_no, notes, now_str))
+    """, (invoice_id, today_str, payment_amount, payment_method, reference_no, saved_accounting_note or notes, now_str))
 
-    # Update invoice
+    # Update invoice (including accounting_notes so User can view Accounting Staff's Ledger Notes)
     execute_db("""
     UPDATE invoices
-    SET paid_amount = ?, balance_due = ?, status = ?, is_overdue = ?
+    SET paid_amount = ?, balance_due = ?, status = ?, is_overdue = ?, accounting_notes = ?
     WHERE id = ?
-    """, (new_paid, new_balance, new_status, is_overdue, invoice_id))
+    """, (new_paid, new_balance, new_status, is_overdue, saved_accounting_note, invoice_id))
 
     # Journal Entry: Debit Cash, Credit AR (tagged to invoice owner so User GL reflects confirmation)
     entry_no = f"JE-PAY-{datetime.now().strftime('%m%d%H%M%S')}"
@@ -1131,34 +1174,48 @@ def record_payment(invoice_id):
     post_journal_entry(entry_no, today_str, "1200 - Accounts Receivable", "Asset", 0.0, payment_amount,
                        f"Relieve AR for {inv['invoice_number']}", owner_username, owner_role)
 
-    if new_status == 'Confirmed':
+    if new_status in ('Confirmed', 'Confirm with Condition'):
         execute_db("UPDATE notifications SET is_read = 1 WHERE record_kind = 'invoice' AND record_id = ? AND target_role IN ('Accounting Staff', 'Admin')", (invoice_id,))
-        create_notification(
-            target_role='User',
-            target_username=owner_username,
-            notif_type='INVOICE_CONFIRMED',
-            title='Invoice Payment Confirmed',
-            message=f"{get_current_user_name()} ({get_current_role()}) confirmed payment for Invoice {inv['invoice_number']} ({inv['client_name']}, ₱{inv['total_amount']:,.2f}). Status is now Confirmed.",
-            record_kind='invoice',
-            record_id=invoice_id,
-            ref_number=inv['invoice_number'],
-            created_by_name=get_current_user_name()
-        )
+        if new_status == 'Confirm with Condition':
+            create_notification(
+                target_role='User',
+                target_username=owner_username,
+                notif_type='INVOICE_CONFIRMED_CONDITION',
+                title='Invoice Confirmed with Condition',
+                message=f"{get_current_user_name()} ({get_current_role()}) sent Ledger Notes on Invoice {inv['invoice_number']} ({inv['client_name']}): \"{saved_accounting_note}\"",
+                record_kind='invoice',
+                record_id=invoice_id,
+                ref_number=inv['invoice_number'],
+                created_by_name=get_current_user_name()
+            )
+        else:
+            create_notification(
+                target_role='User',
+                target_username=owner_username,
+                notif_type='INVOICE_CONFIRMED',
+                title='Invoice Payment Confirmed',
+                message=f"{get_current_user_name()} ({get_current_role()}) confirmed payment for Invoice {inv['invoice_number']} ({inv['client_name']}, ₱{inv['total_amount']:,.2f}). Status is now Confirmed.",
+                record_kind='invoice',
+                record_id=invoice_id,
+                ref_number=inv['invoice_number'],
+                created_by_name=get_current_user_name()
+            )
 
-    log_audit("PAYMENT_RECORDED", f"Recorded payment of ₱{payment_amount:,.2f} for {inv['invoice_number']} ({inv['client_name']}) via {payment_method} -> {new_status}", get_current_user_name())
+    log_audit("PAYMENT_RECORDED", f"Recorded payment of ₱{payment_amount:,.2f} for {inv['invoice_number']} ({inv['client_name']}) via {payment_method} -> {new_status}" + (f" [Ledger Notes: {saved_accounting_note}]" if saved_accounting_note else ""), get_current_user_name())
 
     return jsonify({
         'success': True,
         'message': f'Payment of ₱{payment_amount:,.2f} recorded for {inv["invoice_number"]} ({new_status})',
         'new_balance': new_balance,
-        'status': new_status
+        'status': new_status,
+        'accounting_notes': saved_accounting_note
     })
 
 @app.route('/api/invoices/<int:invoice_id>/confirm', methods=['POST'])
 def confirm_invoice_payment(invoice_id):
     if not check_permission('can_record_payment'):
         return jsonify({
-            'error': f"Permission Denied: Confirming invoices requires Accounting Staff or Admin role."
+            'error': f"Permission Denied: Confirming invoices requires Accounting Staff role."
         }), 403
 
     inv = query_db("SELECT * FROM invoices WHERE id = ?", (invoice_id,), one=True)
@@ -1631,7 +1688,7 @@ def get_bills():
         elif source_filter == 'StaffAdmin':
             query += " AND (created_by_role IN ('Accounting Staff', 'Admin') OR created_by_role IS NULL)"
 
-    query += " ORDER BY id ASC"
+    query += " ORDER BY CASE WHEN status = 'Pending' THEN 0 ELSE 1 END ASC, id DESC"
     bills = query_db(query, params)
     bills_list = []
     for b in bills:
@@ -1723,7 +1780,7 @@ def create_bill():
 def archive_bill(bill_id):
     if not check_permission('can_archive'):
         return jsonify({
-            'error': f"Permission Denied: Current role '{get_current_role()}' cannot archive vendor bills. Requires Accounting Staff or Admin."
+            'error': f"Permission Denied: Current role '{get_current_role()}' cannot archive vendor bills. Requires Accounting Staff."
         }), 403
 
     bill = query_db("SELECT * FROM bills WHERE id = ?", (bill_id,), one=True)
@@ -1805,7 +1862,7 @@ def delete_bill(bill_id):
 def pay_bill(bill_id):
     if not check_permission('can_settle_bills'):
         return jsonify({
-            'error': f"Permission Denied: Settling vendor bills requires Accounting Staff or Admin role. Current role '{get_current_role()}' is unauthorized."
+            'error': f"Permission Denied: Settling vendor bills requires Accounting Staff role. Current role '{get_current_role()}' is unauthorized."
         }), 403
 
     bill = query_db("SELECT * FROM bills WHERE id = ?", (bill_id,), one=True)
@@ -2107,11 +2164,18 @@ def get_notifications():
             "SELECT * FROM notifications WHERE target_role IN ('Accounting Staff', 'Admin') ORDER BY id DESC LIMIT 20"
         )
 
+    inv_map = {}
+    inv_ids = [r['record_id'] for r in rows if r['record_kind'] == 'invoice' and r['record_id']]
+    if inv_ids:
+        placeholders = ",".join("?" for _ in inv_ids)
+        for inv_row in query_db(f"SELECT id, invoice_number, client_name, total_amount, balance_due, status FROM invoices WHERE id IN ({placeholders})", tuple(inv_ids)):
+            inv_map[inv_row['id']] = inv_row
+
     unread_count = sum(1 for r in rows if not r['is_read'])
-    return jsonify({
-        'role': role,
-        'unread_count': unread_count,
-        'notifications': [{
+    notif_list = []
+    for r in rows:
+        linked_inv = inv_map.get(r['record_id']) if r['record_kind'] == 'invoice' else None
+        notif_list.append({
             'id': r['id'],
             'target_role': r['target_role'],
             'notif_type': r['notif_type'],
@@ -2122,8 +2186,17 @@ def get_notifications():
             'ref_number': r['ref_number'],
             'created_by_name': r['created_by_name'],
             'is_read': bool(r['is_read']),
-            'created_at': r['created_at']
-        } for r in rows]
+            'created_at': r['created_at'],
+            'invoice_status': linked_inv['status'] if linked_inv else None,
+            'invoice_client': linked_inv['client_name'] if linked_inv else '',
+            'invoice_amount': float(linked_inv['total_amount'] or 0.0) if linked_inv else 0.0,
+            'invoice_balance': float(linked_inv['balance_due'] or linked_inv['total_amount'] or 0.0) if linked_inv else 0.0
+        })
+
+    return jsonify({
+        'role': role,
+        'unread_count': unread_count,
+        'notifications': notif_list
     })
 
 @app.route('/api/notifications/read', methods=['POST'])
@@ -2181,7 +2254,12 @@ def get_user_home():
             'client_name': i['client_name'],
             'due_date': i['due_date'],
             'total_amount': float(i['total_amount'] or 0.0),
-            'user_status': 'Confirmed' if is_settled(i['status']) else 'Pending',
+            'user_status': (
+                'Confirm with Condition'
+                if i['status'] in ('Confirm with Condition', 'Conditioned')
+                else ('Confirmed' if is_settled(i['status']) else 'Pending')
+            ),
+            'accounting_notes': (i['accounting_notes'] if 'accounting_notes' in i.keys() and i['accounting_notes'] else ''),
             'raw_status': i['status']
         } for i in user_invoices[:6]],
         'recent_bills': [{
