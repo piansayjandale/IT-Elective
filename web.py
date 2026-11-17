@@ -1333,6 +1333,8 @@ def compute_financial_reports():
     ap_cash_disbursed = sum(float(b['amount'] or 0.0) for b in bills if is_settled(b['status']))
     ap_outstanding = sum(float(b['amount'] or 0.0) for b in bills if not is_settled(b['status']))
     ap_due_count = sum(1 for b in bills if not is_settled(b['status']))
+    ap_overdue_amount = sum(float(b['amount'] or 0.0) for b in bills if b['status'] == 'Overdue' and not is_settled(b['status']))
+    ap_overdue_count = sum(1 for b in bills if b['status'] == 'Overdue' and not is_settled(b['status']))
 
     # 3. Opening Baseline (Zeroed for Clean Slate Accounting)
     opening_cash = 0.0
@@ -1511,6 +1513,8 @@ def compute_financial_reports():
             'ar_overdue_amount': ar_overdue_amount,
             'ap_due_count': ap_due_count,
             'ap_total_due': ap_outstanding,
+            'ap_overdue_count': ap_overdue_count,
+            'ap_overdue_amount': ap_overdue_amount,
             'total_bills_count': len(bills),
             'audit_events_count': audit_count_row['cnt'] if audit_count_row else 0
         }
@@ -1556,6 +1560,10 @@ def get_stats():
             'ar_active_count': len(user_invoices),
             'ap_due_count': ap_due_count,
             'ap_total_due': ap_total_due,
+            'ap_overdue_amount': 0.0,
+            'ap_overdue_count': 0,
+            'ap_cash_disbursed': sum(float(b['amount'] or 0.0) for b in user_bills if is_settled(b['status'])),
+            'total_bills_count': len(user_bills),
             'pending_invoices_count': pending_invoices_count,
             'confirmed_invoices_count': confirmed_invoices_count,
             'pending_bills_count': pending_bills_count,
@@ -1578,9 +1586,13 @@ def get_stats():
         'ar_active_count': counts['active_invoices_count'],
         'ap_due_count': counts['ap_due_count'],
         'ap_total_due': counts['ap_total_due'],
+        'ap_overdue_amount': counts.get('ap_overdue_amount', 0.0),
+        'ap_overdue_count': counts.get('ap_overdue_count', 0),
+        'ap_cash_disbursed': reports['balance_sheet']['assets']['ap_disbursed'],
+        'total_bills_count': counts['total_bills_count'],
         'archived_invoices_count': counts['archived_invoices_count'] if can_view_arch else 0,
         'archived_bills_count': counts['archived_bills_count'] if can_view_arch else 0,
-        'total_archived_count': counts['total_archived_count'] if can_view_arch else 0
+        'total_archived_count': counts['total_archived_count']
     })
 
 @app.route('/api/dashboard-summary', methods=['GET'])

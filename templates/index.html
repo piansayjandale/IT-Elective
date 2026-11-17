@@ -585,7 +585,7 @@
                     <!-- Card 1: Total Outstanding -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Outstanding</span>
+                            <span id="kpi-total-title" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Outstanding</span>
                             <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -601,7 +601,7 @@
                     <!-- Card 2: Overdue (Red Attention) -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overdue</span>
+                            <span id="kpi-overdue-title" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overdue</span>
                             <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
@@ -617,7 +617,7 @@
                     <!-- Card 3: Collected This Month (Green Growth - Staff & Admin Only) -->
                     <div id="kpi-card-collected" class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Collected This Month</span>
+                            <span id="kpi-collected-title" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Collected This Month</span>
                             <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1883,8 +1883,8 @@
         }
 
         // Unified Cross-Page Sync Helper (reflects A/R & A/P changes across Staff/Admin & User Portal views)
-        function refreshAllFinancialViews() {
-            fetchStats();
+        async function refreshAllFinancialViews() {
+            await fetchStats();
             loadInvoices();
             loadBills();
             loadNotifications();
@@ -1942,6 +1942,8 @@
                 if (btnAp) btnAp.className = "flex items-center space-x-2 bg-white text-slate-600 border border-slate-200 hover:border-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg transition";
 
                 setActiveSidebarItem('nav-ar');
+                if (lastStatsData) updateKpiCards(lastStatsData);
+                fetchStats();
                 loadInvoices();
             } else {
                 if (arContainer) arContainer.classList.add('hidden');
@@ -1951,8 +1953,86 @@
                 if (btnAp) btnAp.className = "flex items-center space-x-2 bg-white text-slate-800 border-2 border-blue-600 shadow-sm text-xs font-bold px-3 py-1.5 rounded-lg transition";
 
                 setActiveSidebarItem('nav-ap');
+                if (lastStatsData) updateKpiCards(lastStatsData);
+                fetchStats();
                 loadBills();
             }
+        }
+
+        // Cache for dynamic KPI re-rendering across A/R & A/P tabs
+        let lastStatsData = null;
+
+        function updateKpiCards(data) {
+            if (!data) return;
+            lastStatsData = data;
+
+            const totalTitleEl = document.getElementById('kpi-total-title');
+            const totalOutEl = document.getElementById('kpi-total-outstanding');
+            const totalSubEl = document.getElementById('kpi-total-subtext');
+            const overdueTitleEl = document.getElementById('kpi-overdue-title');
+            const overdueEl = document.getElementById('kpi-overdue');
+            const overdueSubEl = document.getElementById('kpi-overdue-subtext');
+            const thirdTitleEl = document.getElementById('kpi-collected-title');
+            const thirdEl = document.getElementById('kpi-collected');
+            const thirdSubEl = document.getElementById('kpi-collected-subtext');
+
+            if (currentUserRole === 'User') {
+                if (totalTitleEl) totalTitleEl.innerText = "TOTAL OUTSTANDING";
+                if (totalOutEl) totalOutEl.innerText = formatCurrency(data.total_outstanding);
+                if (totalSubEl) totalSubEl.innerText = `${data.pending_invoices_count || 0} pending · ${data.confirmed_invoices_count || 0} confirmed`;
+                if (overdueTitleEl) overdueTitleEl.innerText = "OVERDUE";
+                if (overdueEl) overdueEl.innerText = formatCurrency(data.overdue_amount);
+                if (overdueSubEl) overdueSubEl.innerText = `${data.overdue_count} invoices requiring immediate attention`;
+                if (thirdTitleEl) thirdTitleEl.innerText = "COLLECTED THIS MONTH";
+                if (thirdEl) thirdEl.innerText = formatCurrency(data.collected_month);
+                if (thirdSubEl) thirdSubEl.innerHTML = `<span>Confirmed Payments</span>`;
+            } else if (currentTab === 'ap') {
+                // Bills & A/P Context: Total Outstanding reflects Accounts Payable
+                if (totalTitleEl) totalTitleEl.innerText = "TOTAL OUTSTANDING";
+                if (totalOutEl) totalOutEl.innerText = formatCurrency(data.ap_total_due || 0);
+                if (totalSubEl) totalSubEl.innerText = `${data.ap_due_count || 0} pending bills across all accounts`;
+
+                if (overdueTitleEl) overdueTitleEl.innerText = "OVERDUE";
+                if (overdueEl) overdueEl.innerText = formatCurrency(data.ap_overdue_amount || 0);
+                if (overdueSubEl) overdueSubEl.innerText = `${data.ap_overdue_count || 0} bills requiring immediate attention`;
+
+                if (thirdTitleEl) thirdTitleEl.innerText = "DISBURSED THIS MONTH";
+                if (thirdEl) thirdEl.innerText = formatCurrency(data.ap_cash_disbursed || 0);
+                if (thirdSubEl) thirdSubEl.innerHTML = `<span>Settled vendor disbursements</span>`;
+            } else {
+                // Invoicing & A/R Context: Total Outstanding reflects Accounts Receivable
+                if (totalTitleEl) totalTitleEl.innerText = "TOTAL OUTSTANDING";
+                if (totalOutEl) totalOutEl.innerText = formatCurrency(data.total_outstanding || 0);
+                if (totalSubEl) totalSubEl.innerText = `${data.open_invoices_count || 0} open invoices across all accounts`;
+
+                if (overdueTitleEl) overdueTitleEl.innerText = "OVERDUE";
+                if (overdueEl) overdueEl.innerText = formatCurrency(data.overdue_amount || 0);
+                if (overdueSubEl) overdueSubEl.innerText = `${data.overdue_count} invoices requiring immediate attention`;
+
+                if (thirdTitleEl) thirdTitleEl.innerText = "COLLECTED THIS MONTH";
+                if (thirdEl) thirdEl.innerText = formatCurrency(data.collected_month || 0);
+                if (thirdSubEl) thirdSubEl.innerHTML = `<span>Real-time matched payment receipts</span>`;
+            }
+
+            const sidebarAp = document.getElementById('sidebar-ap-badge');
+            if (sidebarAp) sidebarAp.innerText = `${data.ap_due_count || 0} due`;
+
+            const sidebarUserInv = document.getElementById('sidebar-user-inv-badge');
+            const sidebarUserBills = document.getElementById('sidebar-user-bills-badge');
+            if (sidebarUserInv) sidebarUserInv.innerText = data.ar_active_count || 0;
+            if (sidebarUserBills) sidebarUserBills.innerText = (data.pending_bills_count || 0) + (data.confirmed_bills_count || 0);
+
+            const sidebarArch = document.getElementById('sidebar-archives-badge');
+            if (sidebarArch) sidebarArch.innerText = data.total_archived_count || 0;
+
+            const tabBadgeAr = document.getElementById('tab-badge-ar');
+            if (tabBadgeAr) tabBadgeAr.innerText = `${data.ar_active_count || 0} Active`;
+
+            const tabBadgeAp = document.getElementById('tab-badge-ap');
+            if (tabBadgeAp) tabBadgeAp.innerText = `${data.ap_due_count || 0} Pending`;
+
+            const apPendingBadge = document.getElementById('ap-pending-badge');
+            if (apPendingBadge) apPendingBadge.innerText = `${data.ap_due_count || 0} Bills Pending (${formatCurrency(data.ap_total_due || 0)})`;
         }
 
         // Fetch KPI stats from Flask API
@@ -1960,34 +2040,7 @@
             try {
                 const res = await fetch('/api/stats');
                 const data = await res.json();
-                
-                document.getElementById('kpi-total-outstanding').innerText = formatCurrency(data.total_outstanding);
-                document.getElementById('kpi-total-subtext').innerText = currentUserRole === 'User'
-                    ? `${data.pending_invoices_count || 0} pending · ${data.confirmed_invoices_count || 0} confirmed`
-                    : `${data.open_invoices_count} open invoices across all accounts`;
-                document.getElementById('kpi-overdue').innerText = formatCurrency(data.overdue_amount);
-                document.getElementById('kpi-overdue-subtext').innerText = `${data.overdue_count} invoices requiring immediate attention`;
-                document.getElementById('kpi-collected').innerText = formatCurrency(data.collected_month);
-                
-                const sidebarAp = document.getElementById('sidebar-ap-badge');
-                if (sidebarAp) sidebarAp.innerText = `${data.ap_due_count} due`;
-
-                const sidebarUserInv = document.getElementById('sidebar-user-inv-badge');
-                const sidebarUserBills = document.getElementById('sidebar-user-bills-badge');
-                if (sidebarUserInv) sidebarUserInv.innerText = data.ar_active_count || 0;
-                if (sidebarUserBills) sidebarUserBills.innerText = (data.pending_bills_count || 0) + (data.confirmed_bills_count || 0);
-
-                const sidebarArch = document.getElementById('sidebar-archives-badge');
-                if (sidebarArch) sidebarArch.innerText = data.total_archived_count || 0;
-
-                const tabBadgeAr = document.getElementById('tab-badge-ar');
-                if (tabBadgeAr) tabBadgeAr.innerText = `${data.ar_active_count} Active`;
-
-                const tabBadgeAp = document.getElementById('tab-badge-ap');
-                if (tabBadgeAp) tabBadgeAp.innerText = `${data.ap_due_count} Pending`;
-
-                const apPendingBadge = document.getElementById('ap-pending-badge');
-                if (apPendingBadge) apPendingBadge.innerText = `${data.ap_due_count} Bills Pending (${formatCurrency(data.ap_total_due)})`;
+                updateKpiCards(data);
             } catch (err) {
                 console.error("Failed to fetch stats", err);
             }
