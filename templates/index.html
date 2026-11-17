@@ -3560,11 +3560,11 @@
             const canMonitor = Boolean(userPermissions && userPermissions.can_monitor_users);
             const canCreate = Boolean(userPermissions && userPermissions.can_create);
 
-            // Show "+ New Invoice" and "+ New Bill" buttons in Admin and Staff (Admin gets access restricted alert on click)
+            // Keep "+ New Invoice" and "+ New Bill" visible across User, Accounting Staff, and Admin
             const btnNewInv = document.getElementById('btn-new-invoice');
             const btnNewBill = document.getElementById('btn-new-bill');
-            if (btnNewInv) btnNewInv.classList.toggle('hidden', isUser);
-            if (btnNewBill) btnNewBill.classList.toggle('hidden', isUser);
+            if (btnNewInv) btnNewInv.classList.remove('hidden');
+            if (btnNewBill) btnNewBill.classList.remove('hidden');
 
             // Swap Admin/Staff Sidebar vs stripped-down User Sidebar (Home, General Ledger, Invoice, Bills)
             const staffNav = document.getElementById('sidebar-admin-staff-nav');
