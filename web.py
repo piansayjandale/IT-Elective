@@ -536,9 +536,9 @@ def get_invoices():
         if status_filter and status_filter != 'All':
             if get_current_role() == 'User':
                 if status_filter == 'Pending':
-                    query += " AND status NOT IN ('Paid', 'Confirmed', 'Confirm with Condition', 'Conditioned')"
-                elif status_filter == 'Confirmed':
-                    query += " AND status IN ('Paid', 'Confirmed')"
+                    query += " AND status NOT IN ('Paid', 'Confirmed', 'Confirm with Condition', 'Conditioned', 'Sent')"
+                elif status_filter in ('Confirmed', 'Sent'):
+                    query += " AND status IN ('Paid', 'Confirmed', 'Sent')"
                 elif status_filter in ('Confirm with Condition', 'Conditioned'):
                     query += " AND status IN ('Confirm with Condition', 'Conditioned')"
                 else:
@@ -547,6 +547,8 @@ def get_invoices():
             else:
                 if status_filter in ('Conditioned', 'Confirm with Condition'):
                     query += " AND status IN ('Conditioned', 'Confirm with Condition')"
+                elif status_filter in ('Sent', 'Confirmed'):
+                    query += " AND status IN ('Sent', 'Confirmed')"
                 else:
                     query += " AND status = ?"
                     params.append(status_filter)
@@ -1248,7 +1250,7 @@ def confirm_invoice_payment(invoice_id):
 
     execute_db("""
     UPDATE invoices
-    SET paid_amount = total_amount, balance_due = 0.0, status = 'Confirmed', is_overdue = 0
+    SET paid_amount = total_amount, balance_due = 0.0, status = 'Sent', is_overdue = 0
     WHERE id = ?
     """, (invoice_id,))
 

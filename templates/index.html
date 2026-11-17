@@ -667,7 +667,7 @@
                                 <select id="status-filter-select" onchange="handleFilterChange(this.value)" class="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer">
                                     <option value="All">Status: All</option>
                                     <option value="Pending">Status: Pending</option>
-                                    <option value="Confirmed">Status: Confirmed</option>
+                                    <option value="Confirmed" class="user-only-opt">Status: Confirmed</option>
                                     <option value="Confirm with Condition" class="user-only-opt">Status: Confirm with Condition</option>
                                     <option value="Conditioned" class="staff-only-opt">Status: Conditioned</option>
                                     <option value="Paid" class="staff-only-opt">Status: Paid</option>
@@ -776,7 +776,7 @@
                                 <select id="ap-status-filter" onchange="handleApStatusFilter(this.value)" class="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer">
                                     <option value="All">Status: All</option>
                                     <option value="Pending">Status: Pending</option>
-                                    <option value="Confirmed">Status: Confirmed</option>
+                                    <option value="Confirmed" class="user-only-opt">Status: Confirmed</option>
                                 </select>
                                 <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-slate-400">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2033,15 +2033,15 @@
                     if (currentUserRole === 'User') {
                         if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned') {
                             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300"><span class="mr-1">📋</span>Confirm with Condition</span>`;
-                        } else if (inv.status === 'Confirmed' || inv.status === 'Paid') {
+                        } else if (inv.status === 'Confirmed' || inv.status === 'Paid' || inv.status === 'Sent') {
                             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="mr-1">✓</span>Confirmed</span>`;
                         } else {
                             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300"><span class="mr-1">⏳</span>Pending</span>`;
                         }
                     } else if (inv.is_archived || inv.status === 'Archived') {
                         statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-300"><span class="mr-1">🗄️</span>Archived</span>`;
-                    } else if (inv.status === 'Confirmed') {
-                        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="mr-1">✓</span>Confirmed</span>`;
+                    } else if (inv.status === 'Confirmed' || inv.status === 'Sent') {
+                        statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200"><span class="mr-1">✉</span>Sent</span>`;
                     } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned') {
                         statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300"><span class="mr-1">📋</span>Conditioned</span>`;
                     } else if (inv.status === 'Paid') {
@@ -2095,9 +2095,9 @@
                     } else {
                         let actionButton = '';
                         const recordAmount = inv.balance_due > 0 ? inv.balance_due : inv.total_amount;
-                        if (inv.status === 'Paid' || inv.status === 'Confirmed') {
+                        if (inv.status === 'Paid' || inv.status === 'Confirmed' || (inv.status === 'Sent' && inv.balance_due <= 0)) {
                             actionButton = `<button onclick="openInvoiceDetails(${inv.id})" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer">View Details</button>`;
-                        } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned' || inv.status === 'Sent') {
+                        } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned' || (inv.status === 'Sent' && inv.balance_due > 0)) {
                             actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
                         } else if (inv.status === 'Pending' || inv.created_by_role === 'User') {
                             actionButton = `
@@ -2690,7 +2690,9 @@
 
                 const displayDetailStatus = (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned')
                     ? (currentUserRole === 'User' ? 'Confirm with Condition' : 'Conditioned')
-                    : inv.status;
+                    : ((inv.status === 'Confirmed' || inv.status === 'Sent')
+                        ? (currentUserRole === 'User' ? 'Confirmed' : 'Sent')
+                        : inv.status);
 
                 document.getElementById('detail-modal-body').innerHTML = `
                     <div class="flex items-start justify-between border-b pb-4">
@@ -2713,7 +2715,7 @@
                         <div class="text-right">
                             <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Status:</span>
                             <div class="mt-1">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${displayDetailStatus === 'Confirm with Condition' ? 'bg-teal-100 text-teal-800' : (displayDetailStatus === 'Paid' || displayDetailStatus === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' : (displayDetailStatus === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-indigo-100 text-indigo-800'))}">${displayDetailStatus}</span>
+                                <span id="detail-invoice-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold ${displayDetailStatus === 'Confirm with Condition' ? 'bg-teal-100 text-teal-800' : (displayDetailStatus === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' : (displayDetailStatus === 'Sent' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : (displayDetailStatus === 'Overdue' ? 'bg-red-100 text-red-800' : 'bg-indigo-100 text-indigo-800')))}">${displayDetailStatus}</span>
                             </div>
                         </div>
                     </div>
