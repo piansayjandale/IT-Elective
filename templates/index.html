@@ -1371,8 +1371,8 @@
                     🔒
                 </div>
                 <div>
-                    <h3 class="text-lg font-extrabold text-slate-900">Access Restricted (RBAC)</h3>
-                    <p class="text-xs text-slate-500 mt-1">Your current role does not have authorization to perform this operation.</p>
+                    <h3 id="perm-denied-title" class="text-lg font-extrabold text-slate-900">Access Restricted (RBAC)</h3>
+                    <p id="perm-denied-desc" class="text-xs text-slate-500 mt-1">Your current role does not have authorization to perform this operation.</p>
                 </div>
                 <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-left text-xs space-y-1.5">
                     <div class="flex justify-between">
@@ -1389,8 +1389,8 @@
                     </div>
                 </div>
                 <div class="pt-2 flex flex-col space-y-2">
-                    <button onclick="setSessionRole('Admin'); closeModal('modal-permission-denied');" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer">
-                        Switch to Admin (Full Access)
+                    <button id="perm-denied-switch-btn" onclick="setSessionRole('Accounting Staff'); closeModal('modal-permission-denied');" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer">
+                        Switch to Accounting Staff
                     </button>
                     <button onclick="closeModal('modal-permission-denied')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs rounded-xl transition cursor-pointer">
                         Dismiss
@@ -2085,7 +2085,7 @@
                                 </svg>
                             </button>` : '';
                         actionControls = `<div class="inline-flex items-center justify-center space-x-1">${restoreBtn}${deleteBtn}</div>`;
-                    } else if (currentUserRole === 'Admin' || (userPermissions && !userPermissions.can_edit && !userPermissions.can_archive)) {
+                    } else if (currentUserRole === 'User') {
                         actionControls = `
                             <div class="inline-flex items-center justify-center space-x-1.5">
                                 ${noteIconBtn}
@@ -2110,14 +2110,17 @@
                             actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
                         }
 
-                        const editBtn = (userPermissions && userPermissions.can_edit) ? `
+                        const canEditInv = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_edit);
+                        const canArchiveInv = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_archive);
+
+                        const editBtn = canEditInv ? `
                             <button onclick="openEditInvoiceModal(${inv.id})" title="Edit Invoice" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
                             </button>` : '';
 
-                        const archiveBtn = (userPermissions && userPermissions.can_archive) ? `
+                        const archiveBtn = canArchiveInv ? `
                             <button onclick="archiveInvoice(${inv.id}, '${inv.invoice_number}')" title="Archive Invoice" class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
@@ -2273,13 +2276,15 @@
                                 statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">Due</span>`;
                             }
                             const payLabel = (b.status === 'Pending' || b.created_by_role === 'User') ? 'Pay & Confirm' : 'Pay Bill';
-                            payBtn = (userPermissions && userPermissions.can_settle_bills)
+                            const canSettle = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_settle_bills);
+                            payBtn = canSettle
                                 ? `<button onclick="payVendorBill(${b.id}, '${b.bill_number}', '${b.vendor_name}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition cursor-pointer">${payLabel}</button>`
-                                : `<span class="text-[11px] text-slate-400 font-medium px-2">${currentUserRole === 'Admin' ? 'Staff Only (Read-Only)' : 'Pending Staff Review'}</span>`;
+                                : `<span class="text-[11px] text-slate-400 font-medium px-2">Pending Staff Review</span>`;
                         }
                     }
 
-                    const archiveBtn = (currentUserRole !== 'Admin' && userPermissions && userPermissions.can_archive) ? `
+                    const canArchiveBill = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_archive);
+                    const archiveBtn = canArchiveBill ? `
                         <button onclick="archiveVendorBill(${b.id}, '${b.bill_number}')" title="Archive Bill" class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
@@ -2314,7 +2319,7 @@
 
         function openNewBillModal() {
             if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_create === false)) {
-                showPermissionAlert("Record Vendor Bill", "Accounting Staff or User (Admin has Read-Only access)");
+                showPermissionAlert("Record Vendor Bill", "Accounting Staff");
                 return;
             }
             openModal('modal-new-bill');
@@ -2474,7 +2479,7 @@
 
         function openNewInvoiceModal() {
             if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_create === false)) {
-                showPermissionAlert("Create New Invoice", "Accounting Staff or User (Admin has Read-Only access)");
+                showPermissionAlert("Create New Invoice", "Accounting Staff");
                 return;
             }
             openModal('modal-new-invoice');
@@ -2566,7 +2571,7 @@
         // Record Payment Modal
         function openRecordPaymentModal(id, num, client, balance, mode = 'record') {
             if (currentUserRole === 'Admin' || (userPermissions && userPermissions.can_record_payment === false)) {
-                showPermissionAlert("Record Payment", "Accounting Staff");
+                showPermissionAlert(mode === 'partial' ? "Partial Payment" : "Record Payment", "Accounting Staff");
                 return;
             }
             document.getElementById('pay-invoice-id').value = id;
@@ -2788,6 +2793,10 @@
 
         // Send Reminder Modal
         function openReminderModal(id, num, client, due, balance) {
+            if (currentUserRole === 'Admin') {
+                showPermissionAlert("Send Payment Reminder", "Accounting Staff");
+                return;
+            }
             document.getElementById('reminder-invoice-id').value = id;
             document.getElementById('reminder-client-name').value = `${client} (${num})`;
             document.getElementById('reminder-due-date').innerText = due;
@@ -3496,11 +3505,11 @@
             const canMonitor = Boolean(userPermissions && userPermissions.can_monitor_users);
             const canCreate = Boolean(userPermissions && userPermissions.can_create);
 
-            // Hide "+ New Invoice" and "+ New Bill" buttons for Admin (Admin has Read-Only accounting)
+            // Show "+ New Invoice" and "+ New Bill" buttons in Admin and Staff (Admin gets access restricted alert on click)
             const btnNewInv = document.getElementById('btn-new-invoice');
             const btnNewBill = document.getElementById('btn-new-bill');
-            if (btnNewInv) btnNewInv.classList.toggle('hidden', isAdmin || !canCreate);
-            if (btnNewBill) btnNewBill.classList.toggle('hidden', isAdmin || !canCreate);
+            if (btnNewInv) btnNewInv.classList.toggle('hidden', isUser);
+            if (btnNewBill) btnNewBill.classList.toggle('hidden', isUser);
 
             // Swap Admin/Staff Sidebar vs stripped-down User Sidebar (Home, General Ledger, Invoice, Bills)
             const staffNav = document.getElementById('sidebar-admin-staff-nav');
@@ -3521,11 +3530,11 @@
                 opsKpiGrid.classList.toggle('md:grid-cols-3', !isUser);
             }
 
-            // Show Read-Only Banners for Admin on Invoicing & A/R and Bills & A/P
+            // Keep banners hidden so Admin matches Accounting Staff view visually
             const adminBannerAr = document.getElementById('admin-readonly-banner-ar');
             const adminBannerAp = document.getElementById('admin-readonly-banner-ap');
-            if (adminBannerAr) adminBannerAr.classList.toggle('hidden', !isAdmin);
-            if (adminBannerAp) adminBannerAp.classList.toggle('hidden', !isAdmin);
+            if (adminBannerAr) adminBannerAr.classList.add('hidden');
+            if (adminBannerAp) adminBannerAp.classList.add('hidden');
 
             // Labels adapt cleanly for User vs Accounting/Admin
             const opsTitle = document.getElementById('ops-main-title');
@@ -3940,12 +3949,34 @@
         }
 
         function showPermissionAlert(action, requiredRole) {
+            const titleEl = document.getElementById('perm-denied-title');
+            const descEl = document.getElementById('perm-denied-desc');
             const actEl = document.getElementById('perm-denied-action');
             const curEl = document.getElementById('perm-denied-current-role');
             const reqEl = document.getElementById('perm-denied-required-role');
+            const switchBtn = document.getElementById('perm-denied-switch-btn');
+
             if (actEl) actEl.innerText = action;
             if (curEl) curEl.innerText = currentUserRole;
-            if (reqEl) reqEl.innerText = requiredRole;
+            if (reqEl) reqEl.innerText = requiredRole || "Accounting Staff";
+
+            if (currentUserRole === 'Admin') {
+                if (titleEl) titleEl.innerText = "Access Restricted (Read-Only Admin)";
+                if (descEl) descEl.innerText = "You cannot access this accounting staff process since Admin can only view the page.";
+                if (switchBtn) {
+                    switchBtn.innerText = "Switch to Accounting Staff";
+                    switchBtn.onclick = () => { setSessionRole('Accounting Staff'); closeModal('modal-permission-denied'); };
+                    switchBtn.classList.remove('hidden');
+                }
+            } else {
+                if (titleEl) titleEl.innerText = "Access Restricted (RBAC)";
+                if (descEl) descEl.innerText = "Your current role does not have authorization to perform this operation.";
+                if (switchBtn) {
+                    switchBtn.innerText = "Switch to Admin (Full Access)";
+                    switchBtn.onclick = () => { setSessionRole('Admin'); closeModal('modal-permission-denied'); };
+                    switchBtn.classList.remove('hidden');
+                }
+            }
             openModal('modal-permission-denied');
         }
 
