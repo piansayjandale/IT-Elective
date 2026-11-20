@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+# -*- coding: utf-8 -*-
+"""
+LedgerCraft PRO - Pure Python Dashboard View
+100% Template-Free Architecture
+"""
+
+DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -4619,3 +4625,8 @@
 </body>
 </html>
 
+"""
+
+def render_dashboard_view(user=None) -> str:
+    """Returns the pure Python LedgerCraft operations dashboard view."""
+    return DASHBOARD_HTML

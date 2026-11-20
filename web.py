@@ -2,7 +2,7 @@
 LedgerCraft PRO - Financial OS
 Full-Stack Web System for Accountancy & Treasury Operations
 """
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, request, jsonify, redirect, url_for, session
 import os
 import sqlite3
 import secrets
@@ -318,14 +318,12 @@ def get_current_user():
         'permissions': ROLES.get(role, ROLES['User'])
     })
 
-# ----------------- AUTHENTICATION ROUTES (LESSON 6 PROCESS TREE) -----------------
+# ----------------- AUTHENTICATION ROUTES (PURE PYTHON UI) -----------------
 @app.route('/login')
 def login():
     # If already authenticated, redirect to dashboard
     if 'user_id' in session:
         return redirect(url_for('index'))
-    if os.path.exists('templates/login.html'):
-        return render_template('login.html')
     return python_ui.render_login_view()
 
 @app.route('/logout')
@@ -508,8 +506,6 @@ def index():
     # Require authentication (or bypass with ?guest=1 for instant review)
     if 'user_id' not in session and request.args.get('guest') != '1':
         return redirect(url_for('login'))
-    if os.path.exists('templates/index.html'):
-        return render_template('index.html', user=session.get('user_id'))
     return python_ui.render_dashboard_view(user={'name': get_current_user_name(), 'role': get_current_role()})
 
 # ----------------- INVOICES API (COMPLETE CRUD + REACTIVE CART) -----------------

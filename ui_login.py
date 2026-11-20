@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+# -*- coding: utf-8 -*-
+"""
+LedgerCraft PRO - Pure Python Login View
+100% Template-Free Architecture
+"""
+
+LOGIN_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -640,3 +646,8 @@
     </script>
 </body>
 </html>
+"""
+
+def render_login_view() -> str:
+    """Returns the pure Python LedgerCraft login view."""
+    return LOGIN_HTML
