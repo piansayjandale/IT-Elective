@@ -2147,17 +2147,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                     } else if (currentUserRole === 'User') {
                         actionControls = `
                             <div class="inline-flex items-center justify-center space-x-1.5">
-                                ${noteIconBtn}
                                 <button onclick="openInvoiceDetails(${inv.id})" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer">View Details</button>
                             </div>
                         `;
                     } else {
                         let actionButton = '';
+                        let isRecordPayment = false;
                         const recordAmount = inv.balance_due > 0 ? inv.balance_due : inv.total_amount;
                         if (inv.status === 'Paid' || inv.status === 'Confirmed' || (inv.status === 'Sent' && inv.balance_due <= 0)) {
                             actionButton = `<button onclick="openInvoiceDetails(${inv.id})" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer">View Details</button>`;
                         } else if (inv.status === 'Confirm with Condition' || inv.status === 'Conditioned' || (inv.status === 'Sent' && inv.balance_due > 0)) {
                             actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
+                            isRecordPayment = true;
                         } else if (inv.status === 'Pending' || inv.created_by_role === 'User') {
                             actionButton = `
                                 <button onclick="confirmInvoicePayment(${inv.id}, '${inv.invoice_number}', '${inv.client_name}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition cursor-pointer">Confirm Paid</button>
@@ -2167,6 +2168,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                             actionButton = `<button onclick="openReminderModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', '${inv.due_date}', ${recordAmount})" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-red-500/20 transition cursor-pointer">Send Reminder</button>`;
                         } else {
                             actionButton = `<button onclick="openRecordPaymentModal(${inv.id}, '${inv.invoice_number}', '${inv.client_name}', ${recordAmount}, 'record')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs shadow-sm shadow-blue-500/20 transition cursor-pointer">Record Payment</button>`;
+                            isRecordPayment = true;
                         }
 
                         const canEditInv = currentUserRole === 'Admin' || Boolean(userPermissions && userPermissions.can_edit);
@@ -2186,7 +2188,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                                 </svg>
                             </button>` : '';
 
-                        actionControls = `<div class="inline-flex items-center justify-center space-x-1">${noteIconBtn}${actionButton}${editBtn}${archiveBtn}</div>`;
+                        // Show note icon ONLY beside Record Payment (remove beside View Details and other actions)
+                        const showNoteIcon = isRecordPayment ? noteIconBtn : '';
+                        actionControls = `<div class="inline-flex items-center justify-center space-x-1">${showNoteIcon}${actionButton}${editBtn}${archiveBtn}</div>`;
                     }
 
                     tr.innerHTML = `
