@@ -10,10 +10,16 @@ LOGIN_HTML = r"""<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - LedgerCraft</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Offline Local + CDN Fallback) -->
+    <script src="/static/js/tailwindcss.js"></script>
+    <script>
+        if (!window.tailwind) {
+            document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+        }
+    </script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -30,7 +36,21 @@ LOGIN_HTML = r"""<!DOCTYPE html>
                     }
                 }
             }
-        }
+        };
+    </script>
+    <!-- Prevent FOUC: Immediate theme restoration before rendering -->
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem('ledgercraft_theme');
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (saved === 'dark' || (!saved && prefersDark)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {}
+        })();
     </script>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,6 +76,45 @@ LOGIN_HTML = r"""<!DOCTYPE html>
             background-color: rgba(16, 185, 129, 0.15) !important;
             color: #6EE7B7 !important;
         }
+
+        /* ================= DARK THEME STYLES ================= */
+        html.dark header.bg-white,
+        html.dark header {
+            background-color: #0B132B !important;
+            border-color: #1E293B !important;
+            color: #F8FAFC !important;
+        }
+        html.dark header a {
+            color: #CBD5E1 !important;
+        }
+        html.dark header a:hover {
+            color: #60A5FA !important;
+        }
+        html.dark #btn-theme-toggle {
+            color: #FBBF24 !important;
+            background-color: #1E293B !important;
+            border-color: #334155 !important;
+        }
+        html.dark #btn-theme-toggle:hover {
+            background-color: #2D3E64 !important;
+            color: #FDE047 !important;
+        }
+        html.dark .bg-white {
+            background-color: #0F172A !important;
+        }
+        html.dark .border-slate-200 {
+            border-color: #1E293B !important;
+        }
+        html.dark .text-slate-900,
+        html.dark .text-slate-800 {
+            color: #F8FAFC !important;
+        }
+        html.dark .text-slate-700 {
+            color: #E2E8F0 !important;
+        }
+        html.dark .text-slate-600 {
+            color: #CBD5E1 !important;
+        }
     </style>
 </head>
 <body class="min-h-screen text-slate-100 flex flex-col bg-[#060B18] antialiased overflow-x-hidden">
@@ -77,14 +136,23 @@ LOGIN_HTML = r"""<!DOCTYPE html>
             </span>
         </div>
 
-        <!-- Right: Links & Blue Register Pill Button -->
-        <div class="flex items-center space-x-4 sm:space-x-7 text-xs sm:text-[13px]">
+        <!-- Right: Links, Theme Toggle & Blue Register Pill Button -->
+        <div class="flex items-center space-x-3 sm:space-x-5 text-xs sm:text-[13px]">
             <a href="#" onclick="openHelpdeskModal()" class="text-slate-700 hover:text-blue-600 font-medium transition cursor-pointer">
                 Campus Helpdesk
             </a>
             <a href="#" onclick="openFaqModal()" class="text-slate-700 hover:text-blue-600 font-medium transition cursor-pointer">
                 FAQ
             </a>
+            <!-- Dark / Light Theme Toggle -->
+            <button id="btn-theme-toggle" onclick="toggleTheme()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                <svg id="theme-icon-sun" class="w-5 h-5 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+                <svg id="theme-icon-moon" class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
             <button type="button" onclick="openRegisterModal()" class="inline-flex items-center justify-center bg-[#007CB9] hover:bg-[#006A9F] text-white font-bold text-xs px-5 py-2 rounded-full transition shadow-sm cursor-pointer hover:shadow-md">
                 Register
             </button>
@@ -643,6 +711,42 @@ LOGIN_HTML = r"""<!DOCTYPE html>
                 btnText.innerText = "Sign In to Workspace";
             }
         }
+
+        // ==================== THEME CONTROLLER (DARK / LIGHT MODE) ====================
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            try {
+                localStorage.setItem('ledgercraft_theme', theme);
+            } catch (e) {}
+
+            const sunIcons = document.querySelectorAll('#theme-icon-sun');
+            const moonIcons = document.querySelectorAll('#theme-icon-moon');
+            sunIcons.forEach(icon => icon.classList.toggle('hidden', !isDark));
+            moonIcons.forEach(icon => icon.classList.toggle('hidden', isDark));
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        }
+
+        function initTheme() {
+            let saved = null;
+            try {
+                saved = localStorage.getItem('ledgercraft_theme');
+            } catch (e) {}
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+        }
+
+        document.addEventListener('DOMContentLoaded', initTheme);
+        initTheme();
     </script>
 </body>
 </html>

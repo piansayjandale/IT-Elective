@@ -10,10 +10,16 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LedgerCraft PRO - Financial OS</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Offline Local + CDN Fallback) -->
+    <script src="/static/js/tailwindcss.js"></script>
+    <script>
+        if (!window.tailwind) {
+            document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+        }
+    </script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -34,8 +40,21 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                     }
                 }
             }
-        }
-
+        };
+    </script>
+    <!-- Prevent FOUC: Immediate theme restoration before rendering -->
+    <script>
+        (function() {
+            try {
+                var saved = localStorage.getItem('ledgercraft_theme');
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (saved === 'dark' || (!saved && prefersDark)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {}
+        })();
     </script>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -68,6 +87,200 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         .role-hover-group:hover > .role-hover-flyout,
         .role-hover-group.is-hovered > .role-hover-flyout {
             display: block;
+        }
+
+        /* ================= DARK THEME STYLES ================= */
+        html.dark body {
+            background-color: #070C18 !important;
+            color: #F8FAFC !important;
+        }
+        html.dark ::-webkit-scrollbar-track {
+            background: #0B132B !important;
+        }
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #1E293B !important;
+        }
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #334155 !important;
+        }
+
+        /* Surfaces & Layout Backgrounds */
+        html.dark .bg-\[\#F8FAFC\] {
+            background-color: #070C18 !important;
+        }
+        html.dark header.bg-white,
+        html.dark header {
+            background-color: #0B132B !important;
+            border-color: #1E293B !important;
+        }
+        html.dark .bg-white {
+            background-color: #0F172A !important;
+        }
+        html.dark .bg-slate-50,
+        html.dark .bg-slate-50\/50,
+        html.dark .bg-slate-50\/80 {
+            background-color: #142038 !important;
+        }
+        html.dark .bg-slate-100 {
+            background-color: #1E293B !important;
+        }
+        html.dark .hover\:bg-slate-50:hover {
+            background-color: #1A2846 !important;
+        }
+        html.dark .hover\:bg-slate-100:hover {
+            background-color: #203154 !important;
+        }
+        html.dark .hover\:bg-slate-200:hover {
+            background-color: #2A3F6C !important;
+        }
+
+        /* Borders & Dividers */
+        html.dark .border-slate-200,
+        html.dark .border-slate-200\/80,
+        html.dark .border-slate-200\/90,
+        html.dark .border-slate-100,
+        html.dark .border-slate-300 {
+            border-color: #1E293B !important;
+        }
+        html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #1E293B !important;
+        }
+
+        /* Typography */
+        html.dark .text-slate-900,
+        html.dark .text-slate-800 {
+            color: #F8FAFC !important;
+        }
+        html.dark .text-slate-700 {
+            color: #E2E8F0 !important;
+        }
+        html.dark .text-slate-600 {
+            color: #CBD5E1 !important;
+        }
+        html.dark .text-slate-500 {
+            color: #94A3B8 !important;
+        }
+        html.dark .text-slate-400 {
+            color: #64748B !important;
+        }
+
+        /* Form Inputs, Selects, and Textareas */
+        html.dark input:not([type="checkbox"]):not([type="radio"]),
+        html.dark select,
+        html.dark textarea {
+            background-color: #0B132B !important;
+            border-color: #263859 !important;
+            color: #F8FAFC !important;
+        }
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #64748B !important;
+        }
+        html.dark input:focus,
+        html.dark select:focus,
+        html.dark textarea:focus {
+            border-color: #3B82F6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* Modals & Dropdowns */
+        html.dark .modal-backdrop {
+            background-color: rgba(3, 7, 18, 0.75) !important;
+        }
+        html.dark .modal-card,
+        html.dark [id^="modal-"] > div.relative.bg-white,
+        html.dark [id^="modal-"] .bg-white {
+            background-color: #0F172A !important;
+            border-color: #1E293B !important;
+            color: #F8FAFC !important;
+        }
+        html.dark #dropdown-roles,
+        html.dark #dropdown-notifications,
+        html.dark .role-hover-flyout > div {
+            background-color: #0F172A !important;
+            border-color: #1E293B !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        /* Tables & Table Cells */
+        html.dark table thead th {
+            background-color: #142038 !important;
+            color: #94A3B8 !important;
+            border-color: #1E293B !important;
+        }
+        html.dark table tbody tr {
+            border-color: #1E293B !important;
+        }
+        html.dark table tbody tr:hover {
+            background-color: #131E35 !important;
+        }
+        html.dark table td {
+            border-color: #1E293B !important;
+        }
+
+        /* Badges & Chips */
+        html.dark .bg-emerald-50 {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34D399 !important;
+        }
+        html.dark .bg-amber-50,
+        html.dark .bg-amber-50\/90 {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #FBBF24 !important;
+        }
+        html.dark .border-amber-200\/90,
+        html.dark .border-amber-200\/80 {
+            border-color: rgba(245, 158, 11, 0.3) !important;
+        }
+        html.dark .bg-blue-50,
+        html.dark .bg-blue-50\/80 {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #60A5FA !important;
+        }
+        html.dark .border-blue-200 {
+            border-color: rgba(59, 130, 246, 0.35) !important;
+        }
+        html.dark .bg-purple-50 {
+            background-color: rgba(168, 85, 247, 0.15) !important;
+            color: #C084FC !important;
+        }
+        html.dark .bg-red-50 {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #F87171 !important;
+        }
+        html.dark .bg-indigo-50 {
+            background-color: rgba(99, 102, 241, 0.15) !important;
+            color: #818CF8 !important;
+        }
+
+        /* Header interactive elements */
+        #btn-theme-toggle {
+            transition: all 0.2s ease-in-out;
+        }
+        html.dark #btn-theme-toggle {
+            color: #FBBF24 !important;
+            background-color: #1E293B !important;
+            border-color: #334155 !important;
+        }
+        html.dark #btn-theme-toggle:hover {
+            background-color: #2D3E64 !important;
+            color: #FDE047 !important;
+        }
+        html.dark #btn-role-switcher {
+            background-color: #1E293B !important;
+            color: #F8FAFC !important;
+            border-color: #334155 !important;
+        }
+        html.dark #btn-role-switcher:hover {
+            background-color: #2D3E64 !important;
+        }
+        html.dark #btn-notifications {
+            color: #CBD5E1 !important;
+        }
+        html.dark #btn-notifications:hover {
+            background-color: #1E293B !important;
+            color: #FFFFFF !important;
         }
     </style>
 </head>
@@ -401,6 +614,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Dark / Light Theme Toggle in Header -->
+                    <button id="btn-theme-toggle" onclick="toggleTheme()" class="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-transparent hover:border-slate-200" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                        <!-- Sun Icon (visible in dark mode) -->
+                        <svg id="theme-icon-sun" class="w-5 h-5 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <!-- Moon Icon (visible in light mode) -->
+                        <svg id="theme-icon-moon" class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
 
                     <!-- Notification Bell & Dropdown -->
                     <div class="relative">
@@ -1641,8 +1866,42 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         let lastSyncSignature = '';
         let lastNotifCount = null;
 
+        // ==================== THEME CONTROLLER (DARK / LIGHT MODE) ====================
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            try {
+                localStorage.setItem('ledgercraft_theme', theme);
+            } catch (e) {}
+
+            const sunIcons = document.querySelectorAll('#theme-icon-sun');
+            const moonIcons = document.querySelectorAll('#theme-icon-moon');
+            sunIcons.forEach(icon => icon.classList.toggle('hidden', !isDark));
+            moonIcons.forEach(icon => icon.classList.toggle('hidden', isDark));
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        }
+
+        function initTheme() {
+            let saved = null;
+            try {
+                saved = localStorage.getItem('ledgercraft_theme');
+            } catch (e) {}
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+        }
+
         // Initialize application on page load
         document.addEventListener('DOMContentLoaded', async () => {
+            initTheme();
             await fetchCurrentUser();
             fetchStats();
             loadNotifications();
